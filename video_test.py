@@ -27,11 +27,11 @@ def video_test(input_video_path=None, output_video_path=None):
     old_images = deque()
 
     ret, frame = cap.read()
-    for i in range(5):
+    for i in range(15):
         img, pts1 = inv_persp_new(
             frame, (cx, cy), (roi_width, roi_length), spline_dist, 200)
         # old_img = cv2.blur(img, (3, 3))
-        img = cv2.blur(img, (3, 3))
+        img = cv2.blur(img, (7, 7))
         old_images.append(img)
         ret, frame = cap.read()
 
@@ -42,10 +42,10 @@ def video_test(input_video_path=None, output_video_path=None):
         output_video_path \
             if output_video_path is not None \
             else 'output.avi',
-        fourcc, 15.0, (width * 2, height))
+        fourcc, 15.0, (width * 4, height))
 
     frame_number = 0
-    shift = 9
+    shift = 33
 
     while(ret):
         ret, frame = cap.read()
@@ -56,7 +56,7 @@ def video_test(input_video_path=None, output_video_path=None):
         # img, angle_map, dist_map, result_img = handle_img(img, old_images)
 
         old_images.popleft()
-        img = cv2.blur(img, (3, 3))
+        img = cv2.blur(img, (7, 7))
         old_images.append(img)
 
         new, old, sub_img = back_sub.calc_diff(
@@ -72,7 +72,7 @@ def video_test(input_video_path=None, output_video_path=None):
             'img',
             np.concatenate((img, new, old, sub_img), axis=1))
         # cv2.imshow('frame', frame)
-        # out.write(np.concatenate((img, dist_map), axis=1))
+        out.write(np.concatenate((img, new, old, sub_img), axis=1))
 
 
         k = cv2.waitKey(1) & 0xff
@@ -91,5 +91,5 @@ def video_test(input_video_path=None, output_video_path=None):
     out.release()
     cv2.destroyAllWindows()
 
-video_test('../../video/6.mp4', '../results/output.avi')
+video_test('../../video/6.Mp4', '../results/output.avi')
 
