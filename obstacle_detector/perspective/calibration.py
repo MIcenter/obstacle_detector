@@ -5,35 +5,71 @@ import csv
 from .perspective_transformer import inv_persp_new
 from ..distance_calculator import Distance_calculator
 
-def find_center_point(new_img, prev_img, old_pts, eps=0.1):
-	lk_params = dict(
-		winSize  = (35,35),
-		maxLevel = 2,
-		criteria = (
-			cv2.TERM_CRITERIA_EPS | cv2.TERM_CRITERIA_COUNT, 10, 0.003))
 
-	old_gray = cv2.cvtColor(prev_img, cv2.COLOR_BGR2GRAY)
-	new_gray = cv2.cvtColor(new_img, cv2.COLOR_BGR2GRAY)
+def get_lines_intersection(line_1, line_2):
+    x1, y1, x2, y2 = line_1
+    A1, B1, C1 = y1 - y2, x2 - x1, x1 * y2 - x2 * y1
+
+    x1, y1, x2, y2 = line_2
+    A2, B2, C2 = y1 - y2, x2 - x1, x1 * y2 - x2 * y1
+
+    center_x = -(C1 * B2 - C2 * B1) / (A1 * B2 - A2 * B1)
+    center_y = -(A1 * C2 - A2 * C1) / (A1 * B2 - A2 * B1)
+
+    return center_x, center_y
 
 
-	pts, st, err = cv2.calcOpticalFlowPyrLK(
-		new_gray, old_gray, old_pts, None, **lk_params)
+def get_lanes_intersection(img, roi):
+    left_up_x, left_up_y, right_up_x, right_up_y = roi
+    img_roi = img[
+        left_up_y : right_up_y,
+        left_up_x : right_up_x]
 
-	print(old_pts)
-	print(pts)
-	# Select good points
-	good_new = pts[st==1]
-	good_old = old_pts[st==1]
+    # magic
+    gray = cv2.cvtColor(img_roi, cv2.COLOR_BGR2GRAY)
+    edges = cv2.Canny(gray, 50, 150, apertureSize = 3)
+    lines = cv2.HoughLinesP(
+        edges, 1, np.pi/180, 100, minLineLength=100, maxLineGap=10)
 
-	a, b = good_new.ravel()
-	c, d = good_old.ravel()
+    lines = filter(
+        lambda line:
+            abs(line[0][1] - line[0][3]) / abs(line[0][0] - line[0][2]) > 4,
+        lines)
 
-	s = ((a - c) ** 2 + (b - d) ** 2) ** 0.5
-	print(s)
-	if (s > eps):
-		return find_center_point(new_img, prev_img, pts, eps)
-	else:
-		return pts
+    lines = list(lines)
+
+    left = max(
+        lines,
+        key=lambda line:
+            0 if line[0][1] < line[0][3] else abs(line[0][1] - line[0][3]))[0]
+
+    right = max(
+        lines,
+        key=lambda line:
+            0 if line[0][1] > line[0][3] else abs(line[0][1] - line[0][3]))[0]
+
+    center_x, center_y = get_lines_intersection(left, right)
+
+    x1, y1, x2, y2 = left
+    cv2.line(img_roi, (x1, y1), (x2, y2), (0, 255, 0), 2)
+
+    x1, y1, x2, y2 = right
+    cv2.line(img_roi, (x1, y1), (x2, y2), (0, 255, 0), 2)
+
+    img_roi[int(center_y), int(center_x)] = (255, 0, 0)
+
+    return img_roi, center_x + left_up_x, center_y + left_up_y
+
+
+def find_center_point(frames, roi):
+    avg_cx = avg_cy = i = 0
+    for i, frame in enumerate(frames):
+        _, cx, cy = get_lanes_intersection(frame, roi)
+        avg_cx += cx
+        avg_cy += cy
+    i += 1
+
+    return avg_cx // i, avg_cy // i
 
 
 def calibrate_center(new_frame, prev_frame, center, roi, expected_diff=None):
@@ -49,10 +85,12 @@ def calibrate_center(new_frame, prev_frame, center, roi, expected_diff=None):
 	roi_width, roi_length = roi
 
 	new_img, pts1 = inv_persp_new(
-		new_frame, (cx, cy), (roi_width, roi_length), distance_calculator, 200)
+		new_frame, (cx, cy),
+        (roi_width, roi_length), distance_calculator, 200)
 
 	prev_img, pts1 = inv_persp_new(
-		prev_frame, (cx, cy), (roi_width, roi_length), distance_calculator, 200)
+		prev_frame, (cx, cy),
+        (roi_width, roi_length), distance_calculator, 200)
 
 	lk_params = dict(
 		winSize  = (15,15),
@@ -72,10 +110,6 @@ def calibrate_center(new_frame, prev_frame, center, roi, expected_diff=None):
 		(points[0][0][1] - points_old[0][0][1]) - \
 		(points[0][1][1] - points_old[0][1][1])
 
-	print(y_dist_diff)
-	print(points)
-
-	print('center:', cx, cy)
 	if expected_diff is None:
 		if y_dist_diff < 0:
 			return \

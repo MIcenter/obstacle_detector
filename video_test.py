@@ -8,7 +8,7 @@ from collections import deque
 import obstacle_detector.back_sub as back_sub
 
 from obstacle_detector.distance_calculator import spline_dist
-from obstacle_detector.perspective import find_center_point, calibrate_center
+from obstacle_detector.perspective import find_center_point
 from obstacle_detector.perspective import inv_persp_new
 from obstacle_detector.orb import handle_img
 
@@ -27,7 +27,11 @@ def video_test(input_video_path=None, output_video_path=None):
     old_images = deque()
 
     ret, frame = cap.read()
+
+    original_frames = deque()
+
     for i in range(15):
+        original_frames.append(frame)
         img, pts1 = inv_persp_new(
             frame, (cx, cy), (roi_width, roi_length), spline_dist, 200)
         # old_img = cv2.blur(img, (3, 3))
@@ -35,6 +39,7 @@ def video_test(input_video_path=None, output_video_path=None):
         old_images.append(img)
         ret, frame = cap.read()
 
+    cy, cy = find_center_point(original_frames, (400, 100, 800, 719))
 
     height, width, _ = img.shape
     fourcc = cv2.VideoWriter_fourcc(*'XVID')
@@ -91,5 +96,5 @@ def video_test(input_video_path=None, output_video_path=None):
     out.release()
     cv2.destroyAllWindows()
 
-video_test('../../video/6.Mp4', '../results/output.avi')
+video_test('../../video/1.mp4', '../results/output.avi')
 
