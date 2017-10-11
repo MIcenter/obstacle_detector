@@ -10,19 +10,20 @@ def calc_diff(frames, shift_per_frame=0, frames_count=1):
 
     old = rolled_images[-count]
     new = rolled_images[-1]
+    new = cv2.cvtColor(new, cv2.COLOR_BGR2GRAY)
     result = np.zeros_like(new, dtype=np.int32)
 
     for old_img in rolled_images:
+        old_img = cv2.cvtColor(old_img, cv2.COLOR_BGR2GRAY)
         result += cv2.absdiff(new, old_img)
-#    for i in range(count - 1):
-#        result += cv2.absdiff(rolled_images[i], rolled_images[i + 1])
 
-    # result //= count
-    # result *= count
     result = cv2.normalize(result, None, 0, 255, cv2.NORM_MINMAX)
     result = cv2.bitwise_and(
         result, result,
-        mask=cv2.inRange(result, (32, 32, 32), (255, 255, 255)))
+        mask=cv2.inRange(result, 32, 255))
+
     result = result.astype(new.dtype)
+    new = cv2.cvtColor(new, cv2.COLOR_GRAY2BGR)
+    result = cv2.cvtColor(result, cv2.COLOR_GRAY2BGR)
 
     return new, old, result
