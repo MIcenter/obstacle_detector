@@ -51,7 +51,7 @@ def video_test(input_video_path=None, output_video_path=None):
         fourcc, 15.0, (out_width * 4, out_height))
 
     frame_number = 0
-    shift = 33
+    shift = 23
 
     while(ret):
         ret, frame = cap.read()

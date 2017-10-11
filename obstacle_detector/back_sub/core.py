@@ -1,11 +1,23 @@
 import cv2
 import numpy as np
 
+
+def get_shift_value(frames):
+    pass
+
+
+def shift_image(img, x_shift, y_shift):
+    height, width, _ = img.shape
+    M = np.float32([[1, 0, x_shift], [0, 1, y_shift]])
+    dst = cv2.warpAffine(img, M, (width, height))
+    return dst
+
+
 def calc_diff(frames, shift_per_frame=0, frames_count=1):
     count = len(frames)
     rolled_images = [
-        np.roll(
-            blured_image, (count - i) * shift_per_frame // (count - 1), axis=0)
+        shift_image(
+            blured_image, 0, (count - i) * shift_per_frame // (count - 1))
         for i, blured_image in enumerate(frames)]
 
     old = rolled_images[-count]
