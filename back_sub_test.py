@@ -93,4 +93,4 @@ def video_test(input_video_path=None, output_video_path=None):
     out.release()
     cv2.destroyAllWindows()
 
-video_test('../../video/6.mp4', '../results/back_sub_out.avi')
+video_test('../../video/1.mp4', '../results/back_sub_out.avi')
