@@ -37,8 +37,8 @@ def normalize(points_moves):
     mean_dist = \
         sum(map(lambda item: item[2], points_moves)) / len(points_moves)
 
-    # HOT FIX
-    max_dist = 10
+    ## HOT FIX
+    #max_dist = 10
     points_moves = map(
         lambda item: (
             item[0], item[1], item[2] * 255 // max_dist, item[3]),
@@ -115,14 +115,11 @@ def handle_img(img, old_images):
     old_img = old_images[-2]
     too_old_img = old_images[-len(old_images)]
 
-    img = cv2.blur(img, (5, 5))
-    old_img = cv2.blur(old_img, (5, 5))
-    too_ld_img = cv2.blur(too_old_img, (5, 5))
-
     points = find_features(img)
 
     if points is None or len(points) == 0:
-        return img, None, None, None
+        zeros = np.zeros_like(img)
+        return img, zeros, zeros, img
 
     img_gray = cv2.cvtColor(img, cv2.COLOR_BGR2GRAY)
     old_gray = cv2.cvtColor(old_img, cv2.COLOR_BGR2GRAY)
@@ -133,7 +130,8 @@ def handle_img(img, old_images):
         get_points_moves(points, img_gray, too_old_gray))
 
     if len(points_moves) == 0 or len(too_old_points_moves) == 0:
-        return img, None, None, None
+        zeros = np.zeros_like(img)
+        return img, zeros, zeros, img
 
     points_diff = list(
         map(lambda pts: 
@@ -142,13 +140,15 @@ def handle_img(img, old_images):
                 pts[0][1],
                 pts[1][2] / pts[0][2],
                 abs(pts[0][3] - pts[1][3])), zip(points_moves, too_old_points_moves)))
+    # TODO
     points_diff = list(
         filter(
             lambda pt:
-                (pt[3] < 0.25) and (2 < pt[2] < 5), points_diff))
+                (pt[3] < 25) and (0 < pt[2] < 5), points_diff))
 
     if len(points_diff) == 0:
-        return img, None, None, None
+        zeros = np.zeros_like(img)
+        return img, zeros, zeros, img
     points_diff = filter_points(points_diff)
 
     result_img, angle_map, dist_map = draw_points_moves(img, points_diff)
