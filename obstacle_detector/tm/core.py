@@ -24,13 +24,14 @@ def find_template(frames, coords):
     top_left = max_loc
 
     bottom_right = (top_left[0] + t_width, top_left[1] + t_height)
-    cv2.rectangle(img, top_left, bottom_right, 255, 2)
-
     original_bottom_right = (coords[0] + coords[2], coords[1] + coords[2])
-    cv2.rectangle(img, coords[:2], original_bottom_right, 255, 2)
 
     (x1, y1), (x2, y2) = top_left, bottom_right
+    absdiff = cv2.absdiff(template, img[y1:y2, x1:x2])
+    absdiff = cv2.equalizeHist(absdiff)
 
+    cv2.rectangle(img, coords[:2], original_bottom_right, 255, 2)
+    cv2.rectangle(img, top_left, bottom_right, 255, 2)
     
     ravel = res.ravel()
     max_value = max(res.ravel())
@@ -39,4 +40,4 @@ def find_template(frames, coords):
     res = np.uint8(res)
     res = cv2.equalizeHist(res)
 
-    return img, template, img[y1:y2, x1:x2], res
+    return img, template, img[y1:y2, x1:x2], res, absdiff
