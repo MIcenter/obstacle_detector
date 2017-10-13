@@ -6,12 +6,12 @@ import cv2
 from collections import deque
 
 import obstacle_detector.back_sub as back_sub
+import obstacle_detector.tm as tm
 
 from obstacle_detector.distance_calculator import spline_dist
 from obstacle_detector.perspective import find_center_point
 from obstacle_detector.perspective import inv_persp_new
 from obstacle_detector.perspective import regress_perspecive
-from obstacle_detector.orb import handle_img
 
 
 def video_test(input_video_path=None, output_video_path=None):
@@ -63,19 +63,22 @@ def video_test(input_video_path=None, output_video_path=None):
         img = cv2.blur(img, (7, 7))
         old_images.append(img)
 
-        new, old, sub_img = back_sub.calc_diff(
-            old_images, shift_per_frame=shift)
+        handled_img, calculateted_template, founded_template, res = tm.find_template(old_images, (10, 400, 100))
+        cv2.imshow('handled_img', handled_img)
+        cv2.imshow('calculateted_template', calculateted_template)
+        cv2.imshow('founded_template', founded_template)
+        cv2.imshow('res', res)
 
-        cv2.imshow(
-            'img',
-            np.concatenate((img, new, old, sub_img), axis=1))
+#        cv2.imshow(
+#            'img',
+#            np.concatenate((img, img), axis=1))
 
-        dst = regress_perspecive(sub_img, pts1, (height, width))
-        dst = cv2.addWeighted(frame, 0.3, dst, 0.7, 0)
-        cv2.imshow(
-            'inv', dst)
+#        dst = regress_perspecive(img, pts1, (height, width))
+#        dst = cv2.addWeighted(frame, 0.3, dst, 0.7, 0)
+#        cv2.imshow(
+ #           'inv', dst)
 
-        out.write(np.concatenate((img, new, old, sub_img), axis=1))
+#        out.write(np.concatenate((img, img), axis=1))
 
         k = cv2.waitKey(1) & 0xff
         if k == 27:
