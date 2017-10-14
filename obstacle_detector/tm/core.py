@@ -43,4 +43,4 @@ def find_template(frames, coords):
     res = np.uint8(res)
     res = cv2.equalizeHist(res)
 
-    return img, old_img, match, old_template, absdiff
+    return img, old_img, np.concatenate((match, old_template), axis=1), absdiff

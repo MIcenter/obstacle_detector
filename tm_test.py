@@ -63,11 +63,10 @@ def video_test(input_video_path=None, output_video_path=None):
         img = cv2.blur(img, (3, 3))
         old_images.append(img)
 
-        img_gray, old_img_gray, match, old_template, absdiff = tm.find_template(old_images, (0, 400, 200))
+        img_gray, old_img_gray, match, absdiff = tm.find_template(old_images, (0, 400, 200))
         cv2.imshow('img_gray', img_gray)
         cv2.imshow('old_img_gray', old_img_gray)
-        cv2.imshow('match', match)
-        cv2.imshow('old_template', old_template)
+        cv2.imshow('current frame -> old image', match)
         cv2.imshow('absdiff', absdiff)
 
 #        cv2.imshow(
