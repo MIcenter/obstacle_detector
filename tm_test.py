@@ -34,7 +34,7 @@ def video_test(input_video_path=None, output_video_path=None):
 
         img, pts1 = inv_persp_new(
             frame, (cx, cy), (roi_width, roi_length), spline_dist, 200)
-        img = cv2.blur(img, (7, 7))
+        img = cv2.blur(img, (3, 3))
         old_images.append(img)
 
         ret, frame = cap.read()
@@ -60,14 +60,14 @@ def video_test(input_video_path=None, output_video_path=None):
             frame, (cx, cy), (roi_width, roi_length), spline_dist, 200)
 
         old_images.popleft()
-        img = cv2.blur(img, (7, 7))
+        img = cv2.blur(img, (3, 3))
         old_images.append(img)
 
-        handled_img, calculateted_template, founded_template, res, absdiff = tm.find_template(old_images, (0, 400, 200))
-        cv2.imshow('handled_img', handled_img)
-        cv2.imshow('calculateted_template', calculateted_template)
-        cv2.imshow('founded_template', founded_template)
-        cv2.imshow('res', res)
+        img_gray, old_img_gray, match, old_template, absdiff = tm.find_template(old_images, (0, 400, 200))
+        cv2.imshow('img_gray', img_gray)
+        cv2.imshow('old_img_gray', old_img_gray)
+        cv2.imshow('match', match)
+        cv2.imshow('old_template', old_template)
         cv2.imshow('absdiff', absdiff)
 
 #        cv2.imshow(
@@ -77,7 +77,7 @@ def video_test(input_video_path=None, output_video_path=None):
 #        dst = regress_perspecive(img, pts1, (height, width))
 #        dst = cv2.addWeighted(frame, 0.3, dst, 0.7, 0)
 #        cv2.imshow(
- #           'inv', dst)
+#           'inv', dst)
 
 #        out.write(np.concatenate((img, img), axis=1))
 
@@ -97,4 +97,4 @@ def video_test(input_video_path=None, output_video_path=None):
     out.release()
     cv2.destroyAllWindows()
 
-video_test('../../video/1.mp4', '../results/back_sub_out.avi')
+video_test('../../video/6.mp4', '../results/back_sub_out.avi')
