@@ -7,6 +7,7 @@ from collections import deque
 
 import obstacle_detector.back_sub as back_sub
 import obstacle_detector.tm as tm
+from obstacle_detector.frame_queue import Frame_queue
 
 from obstacle_detector.distance_calculator import spline_dist
 from obstacle_detector.perspective import find_center_point
@@ -25,7 +26,7 @@ def video_test(input_video_path=None, output_video_path=None):
             if input_video_path is not None \
             else input('enter video path: '))
 
-    old_images = deque()
+    transformed_frames = Frame_queue()
     original_frames = deque()
 
     ret, frame = cap.read()
@@ -34,8 +35,7 @@ def video_test(input_video_path=None, output_video_path=None):
 
         img, pts1 = inv_persp_new(
             frame, (cx, cy), (roi_width, roi_length), spline_dist, 200)
-        img = cv2.blur(img, (3, 3))
-        old_images.append(img)
+        transformed_frames.append(img)
 
         ret, frame = cap.read()
 
@@ -50,7 +50,6 @@ def video_test(input_video_path=None, output_video_path=None):
             else 'output.avi',
         fourcc, 15.0, (out_width * 4, out_height))
 
-    frame_number = 0
     shift = 23
 
     while(ret):
@@ -59,11 +58,10 @@ def video_test(input_video_path=None, output_video_path=None):
         img, pts1 = inv_persp_new(
             frame, (cx, cy), (roi_width, roi_length), spline_dist, 200)
 
-        old_images.popleft()
-        img = cv2.blur(img, (3, 3))
-        old_images.append(img)
+        transformed_frames.popleft()
+        transformed_frames.append(img)
 
-        img_gray, old_img_gray, match, absdiff = tm.find_template(old_images, (0, 400, 200))
+        img_gray, old_img_gray, match, absdiff = tm.find_template(transformed_frames, (0, 50, 200, 400), method='orb')
         cv2.imshow('img_gray', img_gray)
         cv2.imshow('old_img_gray', old_img_gray)
         cv2.imshow('current frame -> old image', match)
