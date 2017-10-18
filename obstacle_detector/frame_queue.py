@@ -22,6 +22,9 @@ class Frame_queue:
             map(
                 partial(process_frame, blur_value=blur_value), frames))
 
+    def __len__(self):
+        return len(self.__frames)
+
     def __getitem__(self, index):
         return self.__frames[index]
 
