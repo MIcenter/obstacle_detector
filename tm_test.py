@@ -61,9 +61,8 @@ def video_test(input_video_path=None, output_video_path=None):
         transformed_frames.popleft()
         transformed_frames.append(img)
 
-        img_gray, old_img_gray, match, absdiff = tm.find_template(transformed_frames, (0, 50, 200, 400), method='orb')
+        img_gray, old_img_gray, match, absdiff = tm.find_obstacles(transformed_frames, (0, 50, 200, 400), method='sparse')
         cv2.imshow('img_gray', img_gray)
-        cv2.imshow('old_img_gray', old_img_gray)
         cv2.imshow('current frame -> old image', match)
         cv2.imshow('absdiff', absdiff)
 
@@ -76,7 +75,7 @@ def video_test(input_video_path=None, output_video_path=None):
 #        cv2.imshow(
 #           'inv', dst)
 
-#        out.write(np.concatenate((img, img), axis=1))
+        out.write(match)
 
         k = cv2.waitKey(1) & 0xff
         if k == 27:
@@ -94,4 +93,4 @@ def video_test(input_video_path=None, output_video_path=None):
     out.release()
     cv2.destroyAllWindows()
 
-video_test('../../video/6.mp4', '../results/back_sub_out.avi')
+video_test('../../video/1.mp4', '../results/back_sub_out.avi')

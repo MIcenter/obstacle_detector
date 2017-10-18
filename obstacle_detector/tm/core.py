@@ -85,7 +85,7 @@ def calc_dense_optical_flow(img, old_img):
     mask = cv2.inRange(dist, 16, 255)
     hsv[...,2] = cv2.bitwise_and(dist, dist, mask=mask)
     bgr = cv2.cvtColor(hsv,cv2.COLOR_HSV2BGR)
-    return bgr
+    return bgr, dist
 
 
 def calc_sparse_optical_flow(img, old_img, points=None):
@@ -98,15 +98,17 @@ def calc_sparse_optical_flow(img, old_img, points=None):
     points_moves = get_points_moves(points, img, old_img, shift_distance)
 
     points_moves = filter(lambda mv: abs(mv[0][0] - mv[1][0]) < 2, points_moves)
-    points_moves = filter(lambda mv: mv[2] > 15, points_moves)
+    points_moves = filter(lambda mv: 15 < mv[2] < 75, points_moves)
     points_moves =  list(points_moves)
-    print([i[2] ** 0.5 for i in points_moves])
 
     img = cv2.cvtColor(img, cv2.COLOR_GRAY2BGR)
     old_img = cv2.cvtColor(old_img, cv2.COLOR_GRAY2BGR)
+    mask = np.zeros_like(img)
     for i in points_moves:
-        img = cv2.line(img, i[0], i[1], (255, 0, 0), 2)
-    return np.concatenate((img, old_img), axis=1)
+        img = cv2.line(img, i[0], i[1], (255, 0, 0), int(i[2] // 15))
+        mask = cv2.line(mask, i[0], i[1], (255, 0, 0), int(i[2] // 15))
+
+    return img, mask
 
 
 def get_square_from_img(img, rectangle):
@@ -115,10 +117,7 @@ def get_square_from_img(img, rectangle):
     return img[y1:y2, x1:x2].copy()
 
 
-def find_template(frames, coords, method=None):
-    img = frames[-1].gray.copy()
-    old_img = frames[0].gray.copy()
-
+def find_obstacles_between_two_images(img, old_img, coords, method=None):
     old_template = get_square_from_img(old_img, coords)
 
     res = cv2.matchTemplate(img, old_template, cv2.TM_CCORR_NORMED)
@@ -137,18 +136,36 @@ def find_template(frames, coords, method=None):
     absdiff = cv2.absdiff(old_template, match)
     absdiff = cv2.equalizeHist(absdiff)
 
-    img = cv2.rectangle(img, coords[:2], original_bottom_right, 255, 1)
-    old_img = cv2.rectangle(old_img, top_left, bottom_right, 255, 2)
-    
     shift_distance = y1 - coords[1] -2
     matches = None
     if method is None or method == 'orb':
-        matches = find_orb_matches(match, old_template, shift_distance)
+        matches, mask = find_orb_matches(match, old_template, shift_distance)
     elif method == 'sift':
-        matches = find_sift_matches(match, old_template, shift_distance)
+        matches, mask = find_sift_matches(match, old_template, shift_distance)
     elif method == 'sparse':
-        matches = calc_sparse_optical_flow(match, old_template)
+        matches, mask = calc_sparse_optical_flow(match, old_template)
+        cv2.imshow('mask', mask)
     elif method == 'dense':
-        matches = calc_dense_optical_flow(match, old_template)
+        matches, mask = calc_dense_optical_flow(match, old_template)
+
+    return matches, absdiff, mask
+
+
+def find_obstacles(frames, coords, method=None):
+    img = frames[-1].gray.copy()
+
+    result_mask = np.zeros([400, 200, 3], dtype=np.float32)
+    result_matches = np.zeros([400, 200, 3], dtype=np.float32)
+    for i in range(0, len(frames) - 1, 2):
+        old_img = frames[i].gray.copy() 
+        matches, absdiff, mask = find_obstacles_between_two_images(
+            img, old_img, coords, method)
+        result_mask += mask
+        result_matches += matches
+
+    result_mask /= (len(frames) - 1) // 4
+    result_matches /= (len(frames) - 1) // 2
+    result_mask.astype(np.uint8)
+    result_matches.astype(np.uint8)
 
     return img, old_img, matches, absdiff
