@@ -71,6 +71,15 @@ def get_points_shift(img_from, img_to, features, predict_dist=15):
 
     return points_moves
 
+def simple_shift_filter(shifts, x_range, y_range):
+    result = filter(
+        lambda shift:
+            x_range[0] < shift[4][0] < x_range[1] and
+            y_range[0] < shift[4][1] < y_range[1],
+        shifts
+    )
+
+    return result
 
 def detect_obstacles(
         frames,
@@ -89,7 +98,7 @@ def detect_obstacles(
         shift_detection_method = get_points_shift
 
     if shift_filter_method is None:
-        pass
+        shift_filter_method = simple_shift_filter
 
     if obstacles_filter_method is None:
         pass
@@ -99,7 +108,8 @@ def detect_obstacles(
     old_frame = frames[0].frame
 
 
-    def obstacle_map_between_two_frames(current_frame, old_frame, div=15):
+    def obstacle_map_between_two_frames(current_frame, old_frame, div=15,
+            cur_num=0, past_num=-1):
         current_frame = current_frame[y1:y2, x1:x2].copy()
 
         old_x1, old_y1, old_x2, old_y2 = find_template_in_img(
@@ -109,14 +119,15 @@ def detect_obstacles(
         features = feature_detector_method(pre_filter(old_frame))
         features_shifts = shift_detection_method(
             old_frame, current_frame, features)
+        features_shifts = shift_filter_method(
+            features_shifts, (-3, 3), (-10, -2))
 
         obstacles_map = cv2.absdiff(current_frame, old_frame)
         test = np.zeros_like(current_frame)
 
         for shift in features_shifts:
-            dx, dy = shift[4]
-            if abs(dx) > 3 or dy < -10 or dy > 0:
-                continue
+#            if abs(dx) > 3 or dy < -10 or dy > 0:
+#                continue
 #            x, y = shift[1]
 #            x = min(current_frame.shape[1] - 1, x)
 #            y = min(current_frame.shape[0] - 1, y)
