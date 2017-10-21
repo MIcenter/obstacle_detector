@@ -14,6 +14,7 @@ from obstacle_detector.perspective import find_center_point
 from obstacle_detector.perspective import inv_persp_new
 from obstacle_detector.perspective import regress_perspecive
 
+from obstacle_detector.utils.gabor_filter import gabor_filter
 
 def video_test(input_video_path=None, output_video_path=None):
     cx = 595
@@ -39,7 +40,7 @@ def video_test(input_video_path=None, output_video_path=None):
 
         ret, frame = cap.read()
 
-    cy, cy = find_center_point(original_frames, (400, 100, 800, 719))
+    cx, cy = find_center_point(original_frames, (400, 100, 800, 719))
 
     height, width, _ = frame.shape
     out_height, out_width, _ = img.shape
@@ -61,21 +62,14 @@ def video_test(input_video_path=None, output_video_path=None):
         transformed_frames.popleft()
         transformed_frames.append(img)
 
-        img_gray, old_img_gray, match, absdiff = tm.find_obstacles(transformed_frames, (0, 50, 200, 400), method='sparse')
-        cv2.imshow('img_gray', img_gray)
-        cv2.imshow('current frame -> old image', match)
-        cv2.imshow('absdiff', absdiff)
+        # img_gray, old_img_gray, match, absdiff = tm.find_obstacles(transformed_frames, (0, 50, 200, 400), method='sparse')
 
-#        cv2.imshow(
-#            'img',
-#            np.concatenate((img, img), axis=1))
+        obstacles_map, obstacles_on_frame = tm.detect_obstacles(
+            transformed_frames, (0, 250, 200, 550), gabor_filter)
 
-#        dst = regress_perspecive(img, pts1, (height, width))
-#        dst = cv2.addWeighted(frame, 0.3, dst, 0.7, 0)
-#        cv2.imshow(
-#           'inv', dst)
-
-        out.write(match)
+        cv2.imshow('obstacles', obstacles_map)
+        cv2.imshow('obstacles on frame', obstacles_on_frame)
+        cv2.imshow('original', transformed_frames[-1].frame)
 
         k = cv2.waitKey(1) & 0xff
         if k == 27:
