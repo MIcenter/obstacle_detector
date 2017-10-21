@@ -40,7 +40,7 @@ def video_test(input_video_path=None, output_video_path=None):
 
         ret, frame = cap.read()
 
-    cx, cy = find_center_point(original_frames, (400, 100, 800, 719))
+#    cx, cy = find_center_point(original_frames, (400, 100, 800, 719))
 
     height, width, _ = frame.shape
     out_height, out_width, _ = img.shape
@@ -67,9 +67,6 @@ def video_test(input_video_path=None, output_video_path=None):
         obstacles_map, obstacles_on_frame = tm.detect_obstacles(
             transformed_frames, (0, 250, 200, 550), gabor_filter)
 
-        obstacles_map2, obstacles_on_frame2 = tm.detect_obstacles(
-            transformed_frames, (0, 250, 200, 550), gabor_filter)
-
         cv2.imshow('obstacles', obstacles_map)
         cv2.imshow('obstacles on frame', obstacles_on_frame)
         cv2.imshow('original', transformed_frames[-1].frame)
@@ -77,12 +74,6 @@ def video_test(input_video_path=None, output_video_path=None):
         k = cv2.waitKey(1) & 0xff
         if k == 27:
             break
-        elif k == ord('m'):
-            shift += 1
-            print(shift)
-        elif k == ord('l'):
-            shift -= 1
-            print(shift)
         elif k == ord('s'):
             cv2.imwrite('screen.png', img)
 
@@ -90,4 +81,4 @@ def video_test(input_video_path=None, output_video_path=None):
     out.release()
     cv2.destroyAllWindows()
 
-video_test('../../video/6.mp4', '../results/back_sub_out.avi')
+video_test('../../video/2.mp4', '../results/back_sub_out.avi')

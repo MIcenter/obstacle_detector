@@ -71,6 +71,7 @@ def get_points_shift(img_from, img_to, features, predict_dist=15):
 
     return points_moves
 
+
 def simple_shift_filter(shifts, x_range, y_range):
     result = filter(
         lambda shift:
@@ -81,6 +82,14 @@ def simple_shift_filter(shifts, x_range, y_range):
 
     return result
 
+
+def simple_obstacles_segmentation(obstacles_map):
+    obstacles_map = cv2.inRange(obstacles_map, (127, 127, 127), (255, 255, 255))
+    obstacles_map = cv2.morphologyEx(obstacles_map, cv2.MORPH_CLOSE, np.ones((3, 3), dtype=np.uint8), iterations=3)
+    obstacles_map = cv2.cvtColor(obstacles_map, cv2.COLOR_GRAY2BGR)
+    return obstacles_map
+
+
 def detect_obstacles(
         frames,
         roi,
@@ -88,6 +97,7 @@ def detect_obstacles(
         feature_detector_method=None,
         shift_detection_method=None,
         shift_filter_method=None,
+        obstacles_segmentation_method=None,
         obstacles_filter_method=None):
     "TODO docs"
     # intialization block TODO
@@ -100,6 +110,9 @@ def detect_obstacles(
     if shift_filter_method is None:
         shift_filter_method = simple_shift_filter
 
+    if obstacles_segmentation_method is None:
+        obstacles_segmentation_method = simple_obstacles_segmentation
+
     if obstacles_filter_method is None:
         pass
 
@@ -108,8 +121,7 @@ def detect_obstacles(
     old_frame = frames[0].frame
 
 
-    def obstacle_map_between_two_frames(current_frame, old_frame, div=15,
-            cur_num=0, past_num=-1):
+    def obstacle_map_between_two_frames(current_frame, old_frame, div=15):
         current_frame = current_frame[y1:y2, x1:x2].copy()
 
         old_x1, old_y1, old_x2, old_y2 = find_template_in_img(
@@ -122,51 +134,25 @@ def detect_obstacles(
         features_shifts = shift_filter_method(
             features_shifts, (-3, 3), (-10, -2))
 
-        obstacles_map = cv2.absdiff(current_frame, old_frame)
         test = np.zeros_like(current_frame)
 
         for shift in features_shifts:
-#            if abs(dx) > 3 or dy < -10 or dy > 0:
-#                continue
-#            x, y = shift[1]
-#            x = min(current_frame.shape[1] - 1, x)
-#            y = min(current_frame.shape[0] - 1, y)
-#            test[int(y), int(x), 0] += 255 // div
-
-#            x, y = shift[0]
-#            x = min(current_frame.shape[1] - 1, x)
-#            y = min(current_frame.shape[0] - 1, y)
-#            test[int(y), int(x), 1] += 255 // div
-            test = cv2.line(test, shift[0], shift[1], (255, 255, 255), 1)
-            current_frame = cv2.line(current_frame, shift[0], shift[1], (255, 255, 255), 1)
+            test = cv2.line(
+                test, shift[0], shift[1], (255, 255, 255), 1)
+            current_frame = cv2.line(
+                current_frame, shift[0], shift[1], (255, 255, 255), 1)
         return test, current_frame
 
-    obstacles_map, obstacles_on_frame = obstacle_map_between_two_frames(
+
+    #obstacles_map1, obstacles_on_frame1 = obstacle_map_between_two_frames(
+            #current_frame, frames[-5].frame, 1)
+
+    obstacles_map2, obstacles_on_frame2 = obstacle_map_between_two_frames(
             current_frame, old_frame, 1)
 
+    # obstacles_map = cv2.bitwise_and(obstacles_map1, obstacles_map2)
+    obstacles_map = obstacles_map2
+    obstacles_map = obstacles_segmentation_method(obstacles_map)
+    obstacles_on_frame = cv2.bitwise_or(obstacles_on_frame2, obstacles_map)
+
     return obstacles_map, obstacles_on_frame
-
-
-def dense_of(frames, roi, pre_filter):
-    x1, y1, x2, y2 = roi
-    current_frame = pre_filter(frames[-1].frame)
-    old_frame = pre_filter(frames[0].frame)
-
-    current_frame = current_frame[y1:y2, x1:x2]
-
-    old_x1, old_y1, old_x2, old_y2 = find_template_in_img(
-            current_frame, old_frame)
-    old_frame = old_frame[old_y1:old_y2, old_x1:old_x2]
-
-    hsv = np.zeros_like(current_frame)
-    hsv[...,1] = 255
-
-    current_frame = cv2.cvtColor(current_frame, cv2.COLOR_BGR2GRAY)
-    old_frame = cv2.cvtColor(old_frame, cv2.COLOR_BGR2GRAY)
-    flow = cv2.calcOpticalFlowFarneback(old_frame, current_frame, None, 0.5, 3, 5, 3, 5, 1.2, 0)
-    mag, ang = cv2.cartToPolar(flow[...,0], flow[...,1])
-    hsv[...,0] = ang*180/np.pi/2
-    hsv[...,2] = cv2.normalize(mag,None,0,255,cv2.NORM_MINMAX)
-    bgr = cv2.cvtColor(hsv,cv2.COLOR_HSV2BGR)
-
-    return bgr
