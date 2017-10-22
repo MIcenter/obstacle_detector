@@ -10,7 +10,6 @@ import obstacle_detector.tm as tm
 from obstacle_detector.frame_queue import Frame_queue
 
 from obstacle_detector.distance_calculator import spline_dist
-from obstacle_detector.perspective import find_center_point
 from obstacle_detector.perspective import inv_persp_new
 from obstacle_detector.perspective import regress_perspecive
 
@@ -39,8 +38,6 @@ def video_test(input_video_path=None, output_video_path=None):
         transformed_frames.append(img)
 
         ret, frame = cap.read()
-
-#    cx, cy = find_center_point(original_frames, (400, 100, 800, 719))
 
     height, width, _ = frame.shape
     out_height, out_width, _ = img.shape
@@ -81,4 +78,4 @@ def video_test(input_video_path=None, output_video_path=None):
     out.release()
     cv2.destroyAllWindows()
 
-video_test('../../video/2.mp4', '../results/back_sub_out.avi')
+video_test('../../video/6.mp4', '../results/back_sub_out.avi')
