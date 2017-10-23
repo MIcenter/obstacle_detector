@@ -48,8 +48,6 @@ def video_test(input_video_path=None, output_video_path=None):
             else 'output.avi',
         fourcc, 15.0, (out_width * 4, out_height))
 
-    shift = 23
-
     while(ret):
         ret, frame = cap.read()
 
@@ -59,10 +57,10 @@ def video_test(input_video_path=None, output_video_path=None):
         transformed_frames.popleft()
         transformed_frames.append(img)
 
-        # img_gray, old_img_gray, match, absdiff = tm.find_obstacles(transformed_frames, (0, 50, 200, 400), method='sparse')
-
         obstacles_map, obstacles_on_frame = tm.detect_obstacles(
-            transformed_frames, (0, 250, 200, 550), gabor_filter)
+            transformed_frames,
+            roi=(0, 250, 200, 550),
+            pre_filter=gabor_filter)
 
         cv2.imshow('obstacles', obstacles_map)
         cv2.imshow('obstacles on frame', obstacles_on_frame)

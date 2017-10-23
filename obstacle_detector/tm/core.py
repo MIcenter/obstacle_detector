@@ -2,6 +2,7 @@ import cv2
 import numpy as np
 
 from math import acos, pi, floor
+from functools import partial
 
 
 def make_np_array_from_points(key_points):
@@ -90,7 +91,7 @@ def simple_obstacles_segmentation(obstacles_map):
     return obstacles_map
 
 
-def detect_obstacles(
+def detect_obstacles_between_two_frames(
         frames,
         roi,
         pre_filter=lambda img: img.frame,
@@ -99,7 +100,9 @@ def detect_obstacles(
         shift_filter_method=None,
         obstacles_segmentation_method=None,
         obstacles_filter_method=None):
+
     "TODO docs"
+
     # intialization block TODO
     if feature_detector_method is None:
         feature_detector_method = find_orb_featres
@@ -144,15 +147,31 @@ def detect_obstacles(
         return test, current_frame
 
 
-    #obstacles_map1, obstacles_on_frame1 = obstacle_map_between_two_frames(
-            #current_frame, frames[-5].frame, 1)
+    obstacles_map1, obstacles_on_frame1 = obstacle_map_between_two_frames(
+        current_frame, frames[-5].frame, 1)
 
     obstacles_map2, obstacles_on_frame2 = obstacle_map_between_two_frames(
-            current_frame, old_frame, 1)
+        current_frame, old_frame, 1)
 
-    # obstacles_map = cv2.bitwise_and(obstacles_map1, obstacles_map2)
-    obstacles_map = obstacles_map2
-    obstacles_map = obstacles_segmentation_method(obstacles_map)
-    obstacles_on_frame = cv2.bitwise_or(obstacles_on_frame2, obstacles_map)
+    obstacles_map1 = obstacles_segmentation_method(obstacles_map1)
+    obstacles_map2 = obstacles_segmentation_method(obstacles_map2)
+    obstacles_map = cv2.addWeighted(
+        obstacles_map1, 0.5, obstacles_map2, 0.5, 0)
+
+    obstacles_on_frame = cv2.bitwise_or(
+        current_frame[y1:y2, x1:x2], obstacles_map)
 
     return obstacles_map, obstacles_on_frame
+
+
+def detect_obstacles(
+        frames,
+        **kwargs):
+
+    'TODO DOCS'
+
+    partial_detector =  partial(
+        detect_obstacles_between_two_frames,
+        **kwargs)
+
+    return partial_detector(frames)
