@@ -92,7 +92,8 @@ def simple_obstacles_segmentation(obstacles_map):
 
 
 def detect_obstacles_between_two_frames(
-        frames,
+        current_frame_data,
+        old_frame_data,
         roi,
         pre_filter=lambda img: img.frame,
         feature_detector_method=None,
@@ -119,9 +120,9 @@ def detect_obstacles_between_two_frames(
     if obstacles_filter_method is None:
         pass
 
+    current_frame = current_frame_data.frame
+    old_frame = old_frame_data.frame
     x1, y1, x2, y2 = roi
-    current_frame = frames[-1].frame
-    old_frame = frames[0].frame
 
 
     def obstacle_map_between_two_frames(current_frame, old_frame, div=15):
@@ -147,21 +148,11 @@ def detect_obstacles_between_two_frames(
         return test, current_frame
 
 
-    obstacles_map1, obstacles_on_frame1 = obstacle_map_between_two_frames(
-        current_frame, frames[-5].frame, 1)
-
-    obstacles_map2, obstacles_on_frame2 = obstacle_map_between_two_frames(
+    obstacles_map, obstacles_on_frame = obstacle_map_between_two_frames(
         current_frame, old_frame, 1)
+    obstacles_map = obstacles_segmentation_method(obstacles_map)
 
-    obstacles_map1 = obstacles_segmentation_method(obstacles_map1)
-    obstacles_map2 = obstacles_segmentation_method(obstacles_map2)
-    obstacles_map = cv2.addWeighted(
-        obstacles_map1, 0.5, obstacles_map2, 0.5, 0)
-
-    obstacles_on_frame = cv2.bitwise_or(
-        current_frame[y1:y2, x1:x2], obstacles_map)
-
-    return obstacles_map, obstacles_on_frame
+    return obstacles_map
 
 
 def detect_obstacles(
@@ -174,4 +165,21 @@ def detect_obstacles(
         detect_obstacles_between_two_frames,
         **kwargs)
 
-    return partial_detector(frames)
+    current_frame_data = frames[-1]
+    old_frame_data = frames[0]
+
+#    obstacles_map1, obstacles_on_frame1 = obstacle_map_between_two_frames(
+#        current_frame, frames[-5].frame, 1)
+#
+#    obstacles_map1 = obstacles_segmentation_method(obstacles_map1)
+#    obstacles_map2 = obstacles_segmentation_method(obstacles_map2)
+#    obstacles_map = cv2.addWeighted(
+#        obstacles_map1, 0.5, obstacles_map2, 0.5, 0)
+    obstacles_map = partial_detector(
+        current_frame_data, old_frame_data)
+
+    x1, y1, x2, y2 = kwargs['roi']
+    obstacles_on_frame = cv2.bitwise_or(
+        current_frame_data.frame[y1:y2, x1:x2], obstacles_map)
+
+    return obstacles_map, obstacles_on_frame
