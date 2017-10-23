@@ -4,6 +4,8 @@ import numpy as np
 from math import acos, pi, floor
 from functools import partial
 
+from ..utils.sum_maps_equal import sum_maps_equal
+
 
 def make_np_array_from_points(key_points):
     return np.asarray([[i.pt] for i in key_points], dtype='float32')
@@ -168,16 +170,14 @@ def detect_obstacles(
     current_frame_data = frames[-1]
     old_frame_data = frames[0]
 
-#    obstacles_map1, obstacles_on_frame1 = obstacle_map_between_two_frames(
-#        current_frame, frames[-5].frame, 1)
-#
-#    obstacles_map1 = obstacles_segmentation_method(obstacles_map1)
-#    obstacles_map2 = obstacles_segmentation_method(obstacles_map2)
-#    obstacles_map = cv2.addWeighted(
-#        obstacles_map1, 0.5, obstacles_map2, 0.5, 0)
-    obstacles_map = partial_detector(
-        current_frame_data, old_frame_data)
+    obstacles_map = sum_maps_equal([
+        partial_detector(current_frame_data, frames[-i])
+        for i in range(14, len(frames), 1)])
+    obstacles_map = cv2.inRange(
+        obstacles_map, (128, 128, 128), (255, 255, 255))
 
+    obstacles_map = cv2.cvtColor(obstacles_map, cv2.COLOR_GRAY2BGR)
+#    obstacles_on_frame *= 255
     x1, y1, x2, y2 = kwargs['roi']
     obstacles_on_frame = cv2.bitwise_or(
         current_frame_data.frame[y1:y2, x1:x2], obstacles_map)

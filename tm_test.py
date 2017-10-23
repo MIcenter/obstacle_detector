@@ -39,14 +39,20 @@ def video_test(input_video_path=None, output_video_path=None):
 
         ret, frame = cap.read()
 
+    obstacles_map, obstacles_on_frame = tm.detect_obstacles(
+        transformed_frames,
+        roi=(0, 250, 200, 550),
+        pre_filter=gabor_filter)
+
     height, width, _ = frame.shape
-    out_height, out_width, _ = img.shape
+    out_height, out_width = obstacles_map.shape[:2]
+
     fourcc = cv2.VideoWriter_fourcc(*'XVID')
     out = cv2.VideoWriter(
         output_video_path \
             if output_video_path is not None \
             else 'output.avi',
-        fourcc, 15.0, (out_width * 4, out_height))
+        fourcc, 15.0, (out_width, out_height))
 
     while(ret):
         ret, frame = cap.read()
@@ -66,6 +72,8 @@ def video_test(input_video_path=None, output_video_path=None):
         cv2.imshow('obstacles on frame', obstacles_on_frame)
         cv2.imshow('original', transformed_frames[-1].frame)
 
+        out.write(obstacles_on_frame)
+
         k = cv2.waitKey(1) & 0xff
         if k == 27:
             break
@@ -76,4 +84,4 @@ def video_test(input_video_path=None, output_video_path=None):
     out.release()
     cv2.destroyAllWindows()
 
-video_test('../../video/6.mp4', '../results/back_sub_out.avi')
+video_test('../../video/6.mp4', '../results/obstacles_on_frame.avi')
