@@ -44,6 +44,8 @@ def video_test(input_video_path=None, output_video_path=None):
             else 'output.avi',
         fourcc, 15.0, (out_width * 4, out_height))
 
+    left = cv2.imread('aloeL.jpg')
+    right = cv2.imread('aloeR.jpg')
     while(ret):
         ret, frame = cap.read()
 
@@ -52,22 +54,11 @@ def video_test(input_video_path=None, output_video_path=None):
         old_images.popleft()
         old_images.append(img)
 
-        dm = calculate_depth_map(
-            np.rot90(old_images[0], 3),
-            np.rot90(old_images[-1], 3))
-        dm = np.rot90(dm)
-        dm_width = dm.shape[1]
-        dm = dm[:, dm_width - 200:]
-        dm = cv2.pyrUp(dm)
+        dm = calculate_depth_map(left, right)
+        dm = cv2.equalizeHist(dm)
         cv2.imshow('dm', dm)
 
-        dm = cv2.equalizeHist(dm)
         dm = cv2.cvtColor(dm, cv2.COLOR_GRAY2BGR)
-        dst = regress_perspecive(dm, pts1, (height, width))
-        dst = cv2.addWeighted(frame, 0.3, dst, 0.7, 0)
-        img_map = cv2.addWeighted(img, 0.5, dm, 0.5, 0)
-        cv2.imshow('img_map', img_map)
-        cv2.imshow('inv', dst)
 
         k = cv2.waitKey(1) & 0xff
         if k == 27:

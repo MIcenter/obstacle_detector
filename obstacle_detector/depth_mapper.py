@@ -20,10 +20,9 @@ def calculate_depth_map(L, R):
         speckleRange = 32
     )
 
-    print('computing disparity...')
     disp = stereo.compute(imgL, imgR).astype(np.float32) / 16.0
 
-    res = (disp-min_disp)/num_disp
+    res = (disp - min_disp) / num_disp
     cv2.imshow('real_depth', res)
 
     max_value = max(res.ravel())
