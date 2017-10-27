@@ -5,6 +5,7 @@ from math import acos, pi, floor
 from functools import partial
 
 from ..utils.sum_maps_equal import sum_maps_equal
+from .image_shift_calculator import find_template_in_img
 
 
 def make_np_array_from_points(key_points):
@@ -22,23 +23,6 @@ def make_points_moves_struct_from_features(pair):
     angle = acos(cos) * 180 / pi
 
     return (a, b), (c, d), dist, angle, (dx, dy)
-
-
-def find_template_in_img(template, img):
-    template = cv2.cvtColor(template, cv2.COLOR_BGR2GRAY)
-    img = cv2.cvtColor(img, cv2.COLOR_BGR2GRAY)
-
-    res = cv2.matchTemplate(img, template, cv2.TM_CCORR_NORMED)
-    min_val, max_val, min_loc, max_loc = cv2.minMaxLoc(res)
-
-    top_left = max_loc
-
-    t_height, t_width = template.shape
-
-    bottom_right = (top_left[0] + t_width, top_left[1] + t_height)
-    (x1, y1), (x2, y2) = top_left, bottom_right
-
-    return x1, y1, x2, y2
 
 
 def find_orb_featres(img, nfeatures=500):

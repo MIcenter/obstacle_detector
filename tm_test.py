@@ -78,7 +78,7 @@ def video_test(input_video_path=None, output_video_path=None):
         if k == 27:
             break
         elif k == ord('s'):
-            cv2.imwrite('screen.png', img)
+            cv2.imwrite('screen.jpg', img)
 
     cap.release()
     out.release()

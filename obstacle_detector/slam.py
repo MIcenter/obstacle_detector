@@ -1,24 +1,7 @@
 import cv2
 import numpy as np
 
-
-def get_rectangle_from_img(img, rectangle):
-    x1, y1, x2, y2 = rectangle
-    return img[y1:y2, x1:x2].copy()
-
-
-def find_shift_value(img, old_img, coords):
-    old_template = get_rectangle_from_img(old_img, coords)
-
-    res = cv2.matchTemplate(img, old_template, cv2.TM_CCORR_NORMED)
-    min_val, max_val, min_loc, max_loc = cv2.minMaxLoc(res)
-
-    top_left = max_loc
-    print('top_left', top_left)
-
-    t_height, t_width = old_template.shape[:2]
-
-    return top_left[0] - coords[0], top_left[1] - coords[1]
+from .tm.image_shift_detector import find_shift_value
 
 
 def stich_two_images(
