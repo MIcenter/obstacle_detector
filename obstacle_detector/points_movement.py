@@ -8,6 +8,13 @@ def make_np_array_from_points(key_points):
     return np.asarray([[i.pt] for i in key_points], dtype='float32')
 
 
+def make_points_from_np_array(points_arr):
+    return \
+        [i for i in 
+            np.apply_along_axis(
+                lambda pt: cv2.KeyPoint(pt[0], pt[1], 1), 1, points_arr)]
+
+
 def make_points_moves_struct_from_features(pair):
     new, old = pair
     a, b = new.ravel()
