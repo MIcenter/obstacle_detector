@@ -5,7 +5,8 @@ from functools import lru_cache
 
 # inverse perspective mapping defines
 def inv_persp_new(
-        image, center, physical_roi, distance_calculator, out_width=100):
+        image, center, physical_roi,
+        distance_calculator, out_width=100, out_height=None):
     'TODO DOC'
     cx, cy = center
     height, width, _ = image.shape
@@ -26,7 +27,8 @@ def inv_persp_new(
     far_L = ((cx - L[0]) * far_height // (height - cy), height - far_height)
     far_R = (cx * 2 - far_L[0], height - far_height)
 
-    out_height = out_width * roi_length // roi_width
+    if out_height is None:
+        out_height = out_width * roi_length // roi_width
 
     pts1 = np.float32([
         [L[0], L[1]],
