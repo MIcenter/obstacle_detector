@@ -9,6 +9,8 @@ from obstacle_detector.points_movement import make_np_array_from_points
 from obstacle_detector.points_movement import make_points_from_np_array
 from obstacle_detector.tm.image_shift_calculator import find_shift_value
 
+from obstacle_detector.utils.keyboard_interface import handle_keyboard
+
 
 def create_mask_from_points_motion(
         mask, good_new, good_old,
@@ -55,9 +57,11 @@ def create_mask_from_points_motion(
 
     dists = filter(
         lambda dist:
-            (height_in_pixels ** 2 +
-             abs(dx) ** 2 + 
-             abs(dy) ** 2) ** 0.5 > dist[2],
+            abs(
+                (height_in_pixels ** 2 +
+                abs(dx) ** 2 + 
+                abs(dy) ** 2) ** 0.5 - dist[2]) > 2 or
+            dist[1] < cy,
         dists)
     dists = list(dists)
 
@@ -78,7 +82,7 @@ def create_mask_from_points_motion(
     for i in dists:
         a, b, dist = i
         dist = int(dist)
-        mask = cv2.circle(mask,(a,b),5 , (0, 0, 255),-1)
+        mask = cv2.circle(mask,(a,b),2 , (0, 0, 255),-1)
 
     return mask
 
@@ -99,7 +103,7 @@ def video_test(input_video_path=None, output_video_path=None):
             else input('enter video path: '))
     ret, frame = cap.read()
 
-    out_height, out_width, _ = cv2.pyrDown(frame[200:, 300:-300]).shape
+    out_height, out_width, _ = frame[200:, 300:-300].shape
     fourcc = cv2.VideoWriter_fourcc(*'XVID')
     out = cv2.VideoWriter(
         output_video_path \
@@ -108,7 +112,7 @@ def video_test(input_video_path=None, output_video_path=None):
         fourcc, 15.0, (out_width * 2, out_height))
 
     # initialize old_frames
-    old_frame = cv2.pyrDown(cap.read()[1][200:, 300:-300])
+    old_frame = cap.read()[1][200:, 300:-300]
 
     old_gray = cv2.cvtColor(old_frame, cv2.COLOR_BGR2GRAY)
 
@@ -116,18 +120,22 @@ def video_test(input_video_path=None, output_video_path=None):
 
     old_img = cv2.add(old_frame, mask)
     old_transformed_frame, pts1, M = inv_persp_new(
-            cv2.pyrUp(old_img), (cx, cy),
+            old_img, (cx, cy),
             (roi_width, roi_length), spline_dist, 200)
 
     # orb initialize
-    orb = cv2.ORB_create(nfeatures=250)
+    orb = cv2.ORB_create(nfeatures=1000)
 
     # main loop #TODO fps output
     while(True):
-        frame = cv2.pyrDown(cap.read()[1][200:, 300:-300])
+        frame = cap.read()[1][200:, 300:-300]
+        frame = cap.read()[1][200:, 300:-300]
+        frame = cap.read()[1][200:, 300:-300]
+        frame = cap.read()[1][200:, 300:-300]
+        #frame = cv2.pyrUp(cv2.pyrDown(frame))
         frame_gray = cv2.cvtColor(frame, cv2.COLOR_BGR2GRAY)
         transformed_frame, pts1, M = inv_persp_new(
-            cv2.pyrUp(frame), (cx, cy), (roi_width, roi_length), spline_dist, 200)
+            frame, (cx, cy), (roi_width, roi_length), spline_dist, 200)
 
         kp = make_np_array_from_points(orb.detectAndCompute(old_gray,None)[0])
 
@@ -135,16 +143,16 @@ def video_test(input_video_path=None, output_video_path=None):
             old_gray, frame_gray, kp, None)
 
         dx, dy = find_shift_value(
-            transformed_frame, old_transformed_frame, (50, 100, 150, 350))
+            transformed_frame, old_transformed_frame, (50, 300, 250, 550))
         mask = create_mask_from_points_motion(
             mask, new_kp[st==1], kp[st==1],
             (dx, dy, 4.4),
-            M, (cx // 2, cy // 2), roi_height * mask.shape[1] / roi_width)
+            M, (cx, cy), roi_height * mask.shape[1] / roi_width)
 
         img = cv2.add(frame,mask)
 
         transformed_img, pts1, M = inv_persp_new(
-            cv2.pyrUp(img), (cx, cy), (roi_width, roi_length), spline_dist, 200)
+            img, (cx, cy), (roi_width, roi_length), spline_dist, 200)
 
         cv2.imshow('transformed_img',transformed_img)
         cv2.imshow('out', np.concatenate((img, mask), axis=1))
@@ -156,13 +164,8 @@ def video_test(input_video_path=None, output_video_path=None):
         old_transformed_frame = transformed_frame.copy()
         mask = np.zeros_like(old_frame)
 
-        k = cv2.waitKey(1) & 0xff
-        if k == 27:
+        if handle_keyboard(screenshot_image=img) == 1:
             break
-        elif k == ord('p'):
-            cv2.waitKey()
-        elif k == ord('s'):
-            cv2.imwrite('screen.png', img)
 
     cap.release()
     out.release()
