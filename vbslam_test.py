@@ -30,12 +30,6 @@ def create_mask_from_points_motion(
 
     # show height_in_pixels in current roi parameters
 
-    # draw all points in green to see differents between obstacles and plane
-    for new, old in zip(good_new, good_old):
-        a,b = new.ravel()
-        c,d = old.ravel()
-        mask = cv2.circle(mask, (a, b), 1, (0, 255, 0), -1)
-
     transformed_new = cv2.perspectiveTransform(np.asarray([good_new]), M)[0]
     transformed_old = cv2.perspectiveTransform(np.asarray([good_old]), M)[0]
 
@@ -50,10 +44,20 @@ def create_mask_from_points_motion(
 
         # filter false positive movements
         if b < d:
+            if y < cy:
+                dist = ((c - a) ** 2 + (b - d) ** 2 + height_in_pixels ** 2) ** 0.5
+                dists.append([x, y, dist])
+            else:
+                mask = cv2.circle(mask, (x, y), 1, (0, 255, 255), -1)
             continue
 
         dist = ((c - a) ** 2 + (b - d) ** 2 + height_in_pixels ** 2) ** 0.5
         dists.append([x, y, dist])
+
+    # draw all points in green to see differents between obstacles and plane
+    for pt in dists:
+        x, y = pt[:2]
+        mask = cv2.circle(mask, (x, y), 1, (0, 255, 0), -1)
 
     dists = filter(
         lambda dist:
@@ -127,11 +131,11 @@ def video_test(input_video_path=None, output_video_path=None):
     orb = cv2.ORB_create(nfeatures=1000)
 
     # main loop #TODO fps output
+    frame = old_frame.copy()
     while(True):
-        frame = cap.read()[1][200:, 300:-300]
-        frame = cap.read()[1][200:, 300:-300]
-        frame = cap.read()[1][200:, 300:-300]
-        frame = cap.read()[1][200:, 300:-300]
+        for i in range(4):
+            frame = cap.read()[1][200:, 300:-300]
+
         #frame = cv2.pyrUp(cv2.pyrDown(frame))
         frame_gray = cv2.cvtColor(frame, cv2.COLOR_BGR2GRAY)
         transformed_frame, pts1, M = inv_persp_new(
@@ -154,7 +158,7 @@ def video_test(input_video_path=None, output_video_path=None):
         transformed_img, pts1, M = inv_persp_new(
             img, (cx, cy), (roi_width, roi_length), spline_dist, 200)
 
-        cv2.imshow('transformed_img',transformed_img)
+        cv2.imshow('mask', cv2.pyrDown(mask))
         cv2.imshow('out', np.concatenate((img, mask), axis=1))
         out.write(np.concatenate((img, mask), axis=1))
 
