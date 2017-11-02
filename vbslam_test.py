@@ -48,10 +48,13 @@ def create_mask_from_points_motion(
                 dist = ((c - a) ** 2 + (b - d) ** 2 + height_in_pixels ** 2) ** 0.5
                 dists.append([x, y, dist])
             else:
+                mask = cv2.circle(mask, (x, y), 5, (255, 0, 0), -1)
                 mask = cv2.circle(mask, (x, y), 1, (0, 255, 255), -1)
             continue
+        if abs(c-a) > 2:
+            mask = cv2.circle(mask, (x, y), 5, (255, 0, 0), -1)
 
-        dist = ((c - a) ** 2 + (b - d) ** 2 + height_in_pixels ** 2) ** 0.5
+        dist = ((c - a) ** 2 + (b - d) ** 2) ** 0.5
         dists.append([x, y, dist])
 
     # draw all points in green to see differents between obstacles and plane
@@ -62,9 +65,8 @@ def create_mask_from_points_motion(
     dists = filter(
         lambda dist:
             abs(
-                (height_in_pixels ** 2 +
-                abs(dx) ** 2 + 
-                abs(dy) ** 2) ** 0.5 - dist[2]) > 2 or
+                (abs(dx) ** 2 + 
+                abs(dy) ** 2) ** 0.5 - dist[2]) > 15 or
             dist[1] < cy,
         dists)
     dists = list(dists)
@@ -125,7 +127,7 @@ def video_test(input_video_path=None, output_video_path=None):
     old_img = cv2.add(old_frame, mask)
     old_transformed_frame, pts1, M = inv_persp_new(
             old_img, (cx, cy),
-            (roi_width, roi_length), spline_dist, 200)
+            (roi_width, roi_length), spline_dist, 400)
 
     # orb initialize
     orb = cv2.ORB_create(nfeatures=1000)
@@ -139,7 +141,7 @@ def video_test(input_video_path=None, output_video_path=None):
         #frame = cv2.pyrUp(cv2.pyrDown(frame))
         frame_gray = cv2.cvtColor(frame, cv2.COLOR_BGR2GRAY)
         transformed_frame, pts1, M = inv_persp_new(
-            frame, (cx, cy), (roi_width, roi_length), spline_dist, 200)
+            frame, (cx, cy), (roi_width, roi_length), spline_dist, 400)
 
         kp = make_np_array_from_points(orb.detectAndCompute(old_gray,None)[0])
 
@@ -156,9 +158,25 @@ def video_test(input_video_path=None, output_video_path=None):
         img = cv2.add(frame,mask)
 
         transformed_img, pts1, M = inv_persp_new(
-            img, (cx, cy), (roi_width, roi_length), spline_dist, 200)
+            img, (cx, cy), (roi_width, roi_length), spline_dist, 400)
 
-        cv2.imshow('mask', cv2.pyrDown(mask))
+        handled_mask = cv2.pyrDown(mask.copy())
+        blue_mask = handled_mask[..., 0]
+        green_mask = handled_mask[..., 1]
+        red_mask = handled_mask[..., 2]
+        green_mask = cv2.morphologyEx(
+            green_mask, cv2.MORPH_CLOSE, np.ones((3, 3), dtype=np.uint8), iterations=3)
+        green_mask = cv2.morphologyEx(
+            green_mask, cv2.MORPH_OPEN, np.ones((3, 3), dtype=np.uint8), iterations=1)
+        green_mask = cv2.dilate(green_mask, np.ones((3,3), dtype=np.uint8))
+        handled_mask[..., 1] = green_mask
+        red_mask = cv2.morphologyEx(
+            red_mask, cv2.MORPH_CLOSE, np.ones((3, 3), dtype=np.uint8), iterations=3)
+        red_mask = cv2.morphologyEx(
+            red_mask, cv2.MORPH_OPEN, np.ones((3, 3), dtype=np.uint8), iterations=1)
+        red_mask = cv2.dilate(red_mask, np.ones((3,3), dtype=np.uint8))
+        handled_mask[..., 2] = red_mask
+        cv2.imshow('mask', handled_mask)
         cv2.imshow('out', np.concatenate((img, mask), axis=1))
         out.write(np.concatenate((img, mask), axis=1))
 
