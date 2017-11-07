@@ -11,6 +11,7 @@ from obstacle_detector.tm.image_shift_calculator import find_shift_value
 
 from obstacle_detector.utils.keyboard_interface import handle_keyboard
 from obstacle_detector.utils.gabor_filter import gabor_filter
+from obstacle_detector.utils.sum_maps_equal import sum_maps_equal
 
 
 def unite_points(img, iterations):
@@ -22,27 +23,16 @@ def unite_points(img, iterations):
     return img
 
 
+def create_point_shift_structure(
+        good_new, good_old, M):
 
-
-
-def create_mask_from_points_motion(
-        mask, good_new, good_old,
-        plane_shifting,
-        M, center, height_in_pixels):
-
-    'Now it uses few different and simple but effective methods'
-
-    # initialize physical and computing parameters
-    height, width = mask.shape[:2]
-    cx, cy = center
-    dx, dy, dz = plane_shifting
+    """TODO doc"""
 
     transformed_new = cv2.perspectiveTransform(np.asarray([good_new]), M)[0]
     transformed_old = cv2.perspectiveTransform(np.asarray([good_old]), M)[0]
 
     dists = []
-    x_shifted = []
-    radiuses = set()
+
     for good_new_p, good_old_p, transformed_new_p, transformed_old_p in zip(
             good_new, good_old, transformed_new, transformed_old):
 
@@ -52,63 +42,125 @@ def create_mask_from_points_motion(
         a, b = transformed_new_p.ravel()
         c, d = transformed_old_p.ravel()
 
-        if y < cy:
-            continue
-        # filter false positive movements
-#        if b < d:
-#            if y < cy:
-#                continue
-#                #dist = ((c - a) ** 2 + (b - d) ** 2 + height_in_pixels ** 2) ** 0.5
-#                #dists.append([x, y, dist])
-#                mask = cv2.circle(mask, (x, y), 4, (0, 255, 255), -1)
-#            else:
-#                #mask = cv2.circle(mask, (x, y), 5, (255, 0, 0), -1)
-#                mask = cv2.circle(mask, (x, y), 4, (0, 255, 255), -1)
-#            continue
-        if abs(c-a) > 1:
+        dists.append(((x, y), (x_old, y_old), (a, b, c, d)))
+
+    return dists
+
+
+def find_homography_anomalies(shifted_points):
+
+    """Find points in shifted points where x coord has been changed"""
+
+    x_shifted_points = []
+
+    for pt in shifted_points:
+        (x, y), (x_old, y_old), (a, b, c, d) = pt
+
+        if abs(c-a) > 2:
             radius = max(1, ((x - x_old) ** 2 + (y - y_old) ** 2) ** 0.5)
-            radiuses.add(int(radius))
-            mask = cv2.circle(mask, (x, y), int(radius), (255, 0, 0), -1)
-            x_shifted.append((x, y, radius, (a, b, c, d)))
-            continue
+            x_shifted_points.append((x, y, radius))
 
-        dist = ((c - a) ** 2 + (b - d) ** 2) ** 0.5
-        dists.append([x, y, dist])
+    return x_shifted_points
 
-    # draw all points in green to see differents between obstacles and plane
-    for pt in dists:
-        x, y = pt[:2]
-        mask = cv2.circle(mask, (x, y), 1, (0, 255, 0), -1)
 
-    dists = filter(
-        lambda dist:
-            abs(
-                (abs(dx) ** 2 + 
-                abs(dy) ** 2) ** 0.5 - dist[2]) > 15 or
-            dist[1] < cy,
-        dists)
-    dists = list(dists)
+def create_mask_from_points_motion(
+        mask, good_new, good_old,
+        M, center):
 
-    if len(dists) == 0:
-        return mask, x_shifted
+    'Now it uses few different and simple but effective methods'
 
-    max_dist = max(dists, key=lambda dist: dist[2])[2]
-    min_dist = min(dists, key=lambda dist: dist[2])[2]
+    # initialize physical and computing parameters
+    cx, cy = center
 
-    dists = map(
-        lambda dist:
-            [
-                dist[0],
-                dist[1],
-                (dist[2] - min_dist) ** 0.5 * 255 / max_dist ** 0.5],
-        dists)
+    shifted_points = create_point_shift_structure(good_new, good_old, M)
+    x_shifted_points = find_homography_anomalies(shifted_points)
+    x_shifted_points = list(filter(
+        lambda pt:
+            pt[1] > cy and pt[2] < 10,
+        x_shifted_points))
 
-    for i in dists:
-        a, b, dist = i
-        dist = int(dist)
-        mask = cv2.circle(mask,(a,b),2 , (0, 0, 255),-1)
+    little_shifts = filter(
+        lambda pt:
+            1 <= pt[2] <= 1,
+        x_shifted_points)
 
-    return mask, x_shifted
+    middle_shifts = filter(
+        lambda pt:
+            2 <= pt[2] <= 4,
+        x_shifted_points)
+
+    big_shifts = filter(
+        lambda pt:
+            3 <= pt[2] <= 5,
+        x_shifted_points)
+
+    large_shifts = filter(
+        lambda pt:
+            4 <= pt[2] <= 9,
+        x_shifted_points)
+
+    shifts = [
+        little_shifts,
+        middle_shifts,
+        big_shifts,
+        large_shifts]
+
+    masks = []
+
+    for points in shifts:
+        new_mask = np.zeros_like(mask)
+        for pt in points:
+            x, y, radius = pt
+            new_mask = cv2.circle(new_mask,(x,y), int(radius), (255, 0, 0),-1)
+
+        masks.append(new_mask)
+
+    return masks, x_shifted_points
+
+
+def get_obstacles_map(
+        mask, new_kp, kp, M, center):
+
+    """TODO DOCS"""
+
+    masks, x_shifted = create_mask_from_points_motion(
+        mask, new_kp, kp,
+        M, center)
+
+    drawed_contours_list = []
+    obstacles_blocks_list = []
+
+    for mask in masks:
+        mask = cv2.pyrDown(mask.copy())
+
+        opening = cv2.morphologyEx(
+            mask[..., 0], cv2.MORPH_CLOSE,
+            np.ones((5, 5), dtype=np.uint8), iterations=3)
+
+        opening = cv2.inRange(opening, 1, 255)
+
+        drawed_contours = np.zeros_like(mask)
+        obstacles_blocks = np.zeros_like(mask)
+
+        ret, thresh = cv2.threshold(opening, 127, 255, 0)
+        im2, contours, hierarchy = cv2.findContours(
+            thresh, cv2.RETR_TREE, cv2.CHAIN_APPROX_SIMPLE)
+
+        drawed_contours = cv2.drawContours(
+            drawed_contours, contours, -1, (255,0, 255), 1)
+
+        for cnt in contours:
+            x,y,w,h = cv2.boundingRect(cnt)
+            obstacles_blocks = cv2.rectangle(
+                obstacles_blocks, (x, y), (x + w, y + h),
+                (0, 0, 255), thickness=cv2.FILLED)
+            drawed_contours = cv2.rectangle(
+                drawed_contours, (x,y),(x+w,y+h),(0,0,255),1)
+
+        drawed_contours_list.append(drawed_contours)
+        obstacles_blocks_list.append(obstacles_blocks)
+
+    return masks, drawed_contours_list, obstacles_blocks_list
 
 
 def video_test(input_video_path=None, output_video_path=None):
@@ -133,7 +185,7 @@ def video_test(input_video_path=None, output_video_path=None):
         output_video_path \
             if output_video_path is not None \
             else 'output.avi',
-        fourcc, 15.0, (out_width * 2, out_height))
+        fourcc, 3.0, (out_width, out_height))
 
     # initialize old_frames
     old_frame = cap.read()[1][200:, 300:-300]
@@ -169,52 +221,24 @@ def video_test(input_video_path=None, output_video_path=None):
         dx, dy = find_shift_value(
             transformed_frame, old_transformed_frame, (50, 300, 250, 550))
 
-        mask, x_shifted = create_mask_from_points_motion(
-            mask, new_kp[st==1], kp[st==1],
-            (dx, dy, 4.4),
-            M, (cx, cy), roi_height * old_frame.shape[1] / roi_width)
+        masks, drawed_contours, obstacles_blocks_list = get_obstacles_map(
+            mask, new_kp[st==1], kp[st==1], M, (cx, cy))
 
-        img = cv2.add(frame,mask)
+        img = frame.copy()
+        obstacles = sum_maps_equal(obstacles_blocks_list, [1, 2, 4, 8])#, [0.1, 0.2, 0.3, 0.4])
 
-        transformed_img, pts1, M = inv_persp_new(
-            img, (cx, cy), (roi_width, roi_length), spline_dist, 200)
-
-        handled_mask = cv2.pyrDown(mask.copy())
-
-        opening = cv2.morphologyEx(
-            handled_mask[..., 0], cv2.MORPH_CLOSE,
-            np.ones((5, 5), dtype=np.uint8), iterations=3)
-        opening = cv2.inRange(opening, 1, 255)
-        drawed_contours = np.zeros_like(handled_mask)
-        ret, thresh = cv2.threshold(opening, 127, 255, 0)
-        im2, contours, hierarchy = cv2.findContours(
-            thresh, cv2.RETR_TREE, cv2.CHAIN_APPROX_SIMPLE)
-        drawed_contours = cv2.drawContours(
-            drawed_contours, contours, -1, (255,0, 255), 1)
-        for cnt in contours:
-            x,y,w,h = cv2.boundingRect(cnt)
-            drawed_contours = cv2.rectangle(
-                drawed_contours, (x,y),(x+w,y+h),(0,0,255),1)
-
-
-        handled_mask[...,1] = 0
-        handled_mask[...,2] = 0#cv2.equalizeHist(handled_mask[...,2])
-
-        cv2.imshow('mask', np.concatenate(
-            (
-                handled_mask,
-                cv2.cvtColor(
-                    opening,
-                    cv2.COLOR_GRAY2BGR),
-                drawed_contours
-            ), axis=1))
-
-#        cv2.imshow('out', np.concatenate((img, mask), axis=1))
+        cv2.imshow(
+            'obstacles',
+            cv2.add(
+                frame, cv2.pyrUp(obstacles)))
         cv2.imshow('img', cv2.addWeighted(
-            frame, 0.5,
-            cv2.pyrUp(drawed_contours), 0.5,
+            img, 0.5,
+            cv2.pyrUp(drawed_contours[2]), 0.5,
             0))
-#        out.write(np.concatenate((img, mask), axis=1))
+        out.write(cv2.addWeighted(
+            img, 0.5,
+            cv2.pyrUp(drawed_contours[2]), 0.5,
+            0))
 
         old_frame = frame.copy()
         old_gray = frame_gray.copy()
@@ -229,4 +253,4 @@ def video_test(input_video_path=None, output_video_path=None):
     out.release()
     cv2.destroyAllWindows()
 
-video_test('../../video/1.mp4', '../results/motion_of_pointorb_out.avi')
+video_test('../../video/2.mp4', '../results/motion_of_pointorb_out_2_united.avi')
