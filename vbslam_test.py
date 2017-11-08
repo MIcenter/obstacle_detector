@@ -14,15 +14,6 @@ from obstacle_detector.utils.gabor_filter import gabor_filter
 from obstacle_detector.utils.sum_maps_equal import sum_maps_equal
 
 
-def unite_points(img, iterations):
-    for i in range(1 + iterations):
-        for it in range(i):
-            img = cv2.pyrDown(img)
-        for it in range(i):
-            img = cv2.pyrUp(img)
-    return img
-
-
 def create_point_shift_structure(
         good_new, good_old, M):
 
@@ -118,7 +109,7 @@ def create_mask_from_points_motion(
     return masks, x_shifted_points
 
 
-def get_obstacles_map(
+def calculate_obstacles_map(
         mask, new_kp, kp, M, center):
 
     """TODO DOCS"""
@@ -130,12 +121,12 @@ def get_obstacles_map(
     drawed_contours_list = []
     obstacles_blocks_list = []
 
-    for mask in masks:
+    for i, mask in enumerate(masks):
         mask = cv2.pyrDown(mask.copy())
 
         opening = cv2.morphologyEx(
             mask[..., 0], cv2.MORPH_CLOSE,
-            np.ones((5, 5), dtype=np.uint8), iterations=3)
+            np.ones((5, 5), dtype=np.uint8), iterations=1+i)
 
         opening = cv2.inRange(opening, 1, 255)
 
@@ -185,7 +176,7 @@ def video_test(input_video_path=None, output_video_path=None):
         output_video_path \
             if output_video_path is not None \
             else 'output.avi',
-        fourcc, 3.0, (out_width, out_height))
+        fourcc, 15.0, (out_width, out_height))
 
     # initialize old_frames
     old_frame = cap.read()[1][200:, 300:-300]
@@ -221,7 +212,7 @@ def video_test(input_video_path=None, output_video_path=None):
         dx, dy = find_shift_value(
             transformed_frame, old_transformed_frame, (50, 300, 250, 550))
 
-        masks, drawed_contours, obstacles_blocks_list = get_obstacles_map(
+        masks, drawed_contours, obstacles_blocks_list = calculate_obstacles_map(
             mask, new_kp[st==1], kp[st==1], M, (cx, cy))
 
         img = frame.copy()
@@ -233,12 +224,11 @@ def video_test(input_video_path=None, output_video_path=None):
                 frame, cv2.pyrUp(obstacles)))
         cv2.imshow('img', cv2.addWeighted(
             img, 0.5,
-            cv2.pyrUp(drawed_contours[2]), 0.5,
+            cv2.pyrUp(drawed_contours[0]), 0.5,
             0))
-        out.write(cv2.addWeighted(
-            img, 0.5,
-            cv2.pyrUp(drawed_contours[2]), 0.5,
-            0))
+        out.write(
+            cv2.add(
+                frame, cv2.pyrUp(obstacles)))
 
         old_frame = frame.copy()
         old_gray = frame_gray.copy()
@@ -253,4 +243,4 @@ def video_test(input_video_path=None, output_video_path=None):
     out.release()
     cv2.destroyAllWindows()
 
-video_test('../../video/2.mp4', '../results/motion_of_pointorb_out_2_united.avi')
+video_test('../../video/cam2.stream_122_2.mp4', '../results/motion_of_pointorb_out_2_united.avi')
