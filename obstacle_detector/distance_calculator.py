@@ -6,9 +6,9 @@ from functools import lru_cache
 class Distance_calculator:
 	def __init__(self, pxs, meters):
 		self.__interpolate = interp1d(
-			pxs, meters, kind='linear', assume_sorted=True)
+			pxs, meters, kind='linear')
 		self.__deinterpolate = interp1d(
-			meters, pxs, kind='linear', assume_sorted=True)
+			meters, pxs, kind='linear')
 
 	@lru_cache(maxsize=360)
 	def get_rails_px_height_by_distance(self, y_coord):
