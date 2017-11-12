@@ -36,3 +36,53 @@ def json_reader(json_read_function):
         except EOFError:
             break
         yield line
+
+
+def decode_stdin():
+    print('start decoding')
+    json_line = sys.stdin.buffer.read()
+
+    json_end = json_line.index(0)
+    json_str = json_line[:json_end].decode('utf-8')
+
+    json_info = json.loads(json_str)
+    print(
+        json_info["img-size"],
+        json_info["height"],
+        json_info["width"],
+        json_info["format"],
+        json_str,
+        len(json_str),
+        len(json_line)
+        )
+
+    size = int(json_info["img-size"])
+    height = int(json_info["height"])
+    width = int(json_info["width"])
+    format_prop = json_info["format"]
+
+    dtype = None
+    channels = 1
+
+    if format_prop == 'gray8':
+        dtype = np.uint8
+    elif format_prop == 'bgr24':
+        dtype=np.uint8
+        channels = 3
+
+    if channels == 1:
+        arr = np.frombuffer(
+            json_line[json_end + 1:json_end + 1 + size],
+            dtype=dtype).reshape((height, width))
+    elif channels == 3:
+        arr = np.frombuffer(
+            json_line[json_end + 1:json_end + 1 + size],
+            dtype=dtype).reshape((height, width, channels))
+
+    print(arr)
+    cv2.imshow('out', arr)
+    cv2.waitKey()
+    exit()
+
+
+decode_stdin()
