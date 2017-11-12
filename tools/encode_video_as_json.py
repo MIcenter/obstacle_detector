@@ -49,6 +49,7 @@ def print_video_as_json(path=None):
     for i, line in enumerate(video_as_json(path)):
         sys.stdout.buffer.write(line)
         if i % 10 == 9:
-            exit()
+            pass
+#            exit()
 
 print_video_as_json(input())
