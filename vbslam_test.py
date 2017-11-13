@@ -18,6 +18,9 @@ from obstacle_detector.homography import create_point_shift_structure,\
                                          create_mask_from_points_motion,\
                                          calculate_obstacles_map
 
+from tools.decode_video_from_json import decode_stdin
+
+
 def video_test(input_video_path=None, output_video_path=None):
     # physical and computing parameters
     cx = 595 - 300
@@ -28,11 +31,8 @@ def video_test(input_video_path=None, output_video_path=None):
     roi_height = 4.4
 
     # video output block
-    cap = cv2.VideoCapture(
-        input_video_path \
-            if input_video_path is not None \
-            else input('enter video path: '))
-    ret, frame = cap.read()
+    json_frames = decode_stdin()
+    frame = json_frames.__next__()
 
     out_height, out_width, _ = frame[200:, 300:-300].shape
     fourcc = cv2.VideoWriter_fourcc(*'XVID')
@@ -43,7 +43,7 @@ def video_test(input_video_path=None, output_video_path=None):
         fourcc, 15.0, (out_width, out_height))
 
     # initialize old_frames
-    old_frame = cap.read()[1][200:, 300:-300]
+    old_frame = frame[200:, 300:-300]
 
     old_gray = cv2.cvtColor(old_frame, cv2.COLOR_BGR2GRAY)
 
@@ -58,10 +58,8 @@ def video_test(input_video_path=None, output_video_path=None):
     orb = cv2.ORB_create(nfeatures=3500)
 
     # main loop #TODO fps output
-    frame = old_frame.copy()
-    while(True):
-        for i in range(4):
-            frame = cap.read()[1][200:, 300:-300]
+    for frame in json_frames:
+        frame = frame[200:, 300:-300]
 
         #frame = cv2.pyrUp(cv2.pyrDown(frame))
         frame_gray = cv2.cvtColor(frame, cv2.COLOR_BGR2GRAY)
@@ -88,7 +86,7 @@ def video_test(input_video_path=None, output_video_path=None):
                 frame, cv2.pyrUp(obstacles)))
         cv2.imshow('img', cv2.addWeighted(
             img, 0.5,
-            cv2.pyrUp(drawed_contours[0]), 0.5,
+            cv2.pyrUp(drawed_contours[3]), 0.5,
             0))
         out.write(
             cv2.add(
@@ -103,7 +101,6 @@ def video_test(input_video_path=None, output_video_path=None):
         if handle_keyboard(screenshot_image=None) == 1:
             break
 
-    cap.release()
     out.release()
     cv2.destroyAllWindows()
 
