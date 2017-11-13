@@ -10,7 +10,7 @@ def sum_maps_equal(maps, weights=None):
     for i, weight in enumerate(weights[1:]):
         result = cv2.addWeighted(
             result, previous_weight / (weight + previous_weight),
-            maps[i], weight / (weight + previous_weight),
+            maps[i + 1], weight / (weight + previous_weight),
             0)
         previous_weight += weight
 
