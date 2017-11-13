@@ -78,7 +78,7 @@ def video_test(input_video_path=None, output_video_path=None):
             mask, new_kp[st==1], kp[st==1], M, (cx, cy))
 
         img = frame.copy()
-        obstacles = sum_maps_equal(obstacles_blocks_list, [1, 2, 4, 8])#, [0.1, 0.2, 0.3, 0.4])
+        obstacles = sum_maps_equal(obstacles_blocks_list, [1, 1.5, 2, 2.5])
 
         cv2.imshow(
             'obstacles',
