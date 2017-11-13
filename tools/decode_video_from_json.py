@@ -51,9 +51,4 @@ def decode_stdin():
                 img_buf[:size],
                 dtype=dtype).reshape((height, width, channels))
 
-        cv2.imshow('out', arr)
-        cv2.waitKey(1)
-    exit()
-
-
-decode_stdin()
+        yield arr
