@@ -65,7 +65,7 @@ def create_mask_from_points_motion(
 
     middle_shifts = filter(
         lambda pt:
-            2 <= pt[2] <= 4,
+            1 <= pt[2] <= 4,
         x_shifted_points)
 
     big_shifts = filter(
