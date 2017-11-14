@@ -6,10 +6,18 @@ from functools import lru_cache
 # inverse perspective mapping defines
 def inv_persp_new(
         image, center, physical_roi,
-        distance_calculator, out_width=100, out_height=None):
+        px_height_or_roi_length, out_width=100, out_height=None,
+        extra_width=0):
     'TODO DOC'
     cx, cy = center
-    height, width, _ = image.shape
+    height, width, channels = None, None, None
+
+    if len(image.shape) == 3:
+        height, width, channels = image.shape
+    else:
+        height, width = image.shape[:2]
+        channels = 1
+
     roi_width, roi_length = physical_roi
 
     L = R = (0, 0)
@@ -21,29 +29,35 @@ def inv_persp_new(
         L = (cx * 2 - width, height - 1)
         R = (width - 1, height - 1)
 
-    far_height = int(
-        distance_calculator.get_rails_px_height_by_distance(roi_length))
-
+    far_height = px_height_or_roi_length
     far_L = ((cx - L[0]) * far_height // (height - cy), height - far_height)
     far_R = (cx * 2 - far_L[0], height - far_height)
 
     if out_height is None:
         out_height = out_width * roi_length // roi_width
 
+    left_offset = extra_width
     pts1 = np.float32([
         [L[0], L[1]],
         [R[0], R[1]],
         [far_L[0], far_L[1]],
         [far_R[0], far_R[1]]]) 
     pts2 = np.float32([
-        [0, out_height],
-        [out_width, out_height],
-        [0, 0],
-        [out_width, 0]])
+        [left_offset, out_height],
+        [left_offset + out_width, out_height],
+        [left_offset, 0],
+        [left_offset + out_width, 0]])
 
     M = cv2.getPerspectiveTransform(pts1, pts2)
 
-    dst = cv2.warpPerspective(image, M, (out_width, out_height))
+    dst = None
+
+    if extra_width == 0:
+        dst = cv2.warpPerspective(image, M, (out_width, out_height))
+    else:
+        dst = cv2.warpPerspective(
+            image,
+            M, (out_width + extra_width * 2, out_height))
 
     return dst, pts1, M
 
