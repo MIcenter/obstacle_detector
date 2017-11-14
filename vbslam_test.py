@@ -4,13 +4,11 @@ import numpy as np
 import cv2
 
 from obstacle_detector.perspective import inv_persp_new
-from obstacle_detector.distance_calculator import spline_dist
 from obstacle_detector.points_movement import make_np_array_from_points
 from obstacle_detector.points_movement import make_points_from_np_array
 from obstacle_detector.tm.image_shift_calculator import find_shift_value
 
 from obstacle_detector.utils.keyboard_interface import handle_keyboard
-from obstacle_detector.utils.gabor_filter import gabor_filter
 from obstacle_detector.utils.sum_maps_equal import sum_maps_equal
 
 from obstacle_detector.homography import create_point_shift_structure,\
@@ -29,6 +27,7 @@ def video_test(input_video_path=None, output_video_path=None):
     roi_width = 6
     roi_length = 20
     roi_height = 4.4
+    px_height_of_roi_length = 352
 
     # video output block
     json_frames = decode_stdin()
@@ -52,19 +51,21 @@ def video_test(input_video_path=None, output_video_path=None):
     old_img = cv2.add(old_frame, mask)
     old_transformed_frame, pts1, M = inv_persp_new(
             old_img, (cx, cy),
-            (roi_width, roi_length), spline_dist, 200)
+            (roi_width, roi_length), px_height_of_roi_length, 400)
 
     # orb initialize
     orb = cv2.ORB_create(nfeatures=3500)
 
     # main loop #TODO fps output
-    for frame in json_frames:
+    for frame_number, frame in enumerate(json_frames):
+        if frame_number % 5 != 0:
+            continue
         frame = frame[200:, 300:-300]
 
         #frame = cv2.pyrUp(cv2.pyrDown(frame))
         frame_gray = cv2.cvtColor(frame, cv2.COLOR_BGR2GRAY)
         transformed_frame, pts1, M = inv_persp_new(
-            frame, (cx, cy), (roi_width, roi_length), spline_dist, 200)
+            frame, (cx, cy), (roi_width, roi_length), px_height_of_roi_length, 400)
 
         kp = make_np_array_from_points(orb.detectAndCompute(old_gray,None)[0])
 
