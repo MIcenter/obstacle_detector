@@ -62,15 +62,15 @@ def inv_persp_new(
     return dst, pts1, M
 
 
-def regress_perspecive(img, pts1, shape):
+def regress_perspecive(img, pts1, shape, left_offset):
     height, width = shape
 
     img_height, img_width, _ = img.shape
     pts2 = np.float32([
-        [0, img_height],
-        [img_width, img_height],
-        [0, 0],
-        [img_width, 0]])
+        [left_offset + 0, img_height],
+        [img_width - left_offset, img_height],
+        [left_offset + 0, 0],
+        [img_width - left_offset, 0]])
 
     M = cv2.getPerspectiveTransform(pts2, pts1)
 
