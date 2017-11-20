@@ -50,14 +50,14 @@ def video_test(input_video_path=None):
         hsv = cv2.cvtColor(hsv, cv2.COLOR_HSV2BGR)
 
         height = hsv.shape[0]
-        w, h = 10, 10
+        w, h = 20, 20
         #hsv = cv2.blur(hsv, (2, 2))
         template = hsv[height - h - 1: height - 1, 90:90 + w]
         res = cv2.matchTemplate(hsv, template,cv2.TM_SQDIFF_NORMED)
-        threshold = 0.5
+        threshold = 0.3
         loc = np.where( res <= 1-threshold)
         for pt in zip(*loc[::-1]):
-            cv2.rectangle(hsv, pt, (pt[0] + w, pt[1] + h), (0,0,0), 2, cv2.FILLED)
+            cv2.rectangle(hsv, pt, (pt[0] + w, pt[1] + h), (0,0,0), thickness=cv2.FILLED)
         cv2.imshow('res', res)
 #        min_val, max_val, min_loc, max_loc = cv2.minMaxLoc(res)
 
