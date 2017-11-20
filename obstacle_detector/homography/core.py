@@ -37,7 +37,7 @@ def find_homography_anomalies(shifted_points):
 
         if abs(c-a) > 2:
             radius = max(1, ((x - x_old) ** 2 + (y - y_old) ** 2) ** 0.5)
-            x_shifted_points.append((x, y, radius))
+            x_shifted_points.append((x, y, radius, x_old, y_old))
 
     return x_shifted_points
 
@@ -60,12 +60,12 @@ def create_mask_from_points_motion(
 
     little_shifts = filter(
         lambda pt:
-            1 <= pt[2] <= 1,
+            1 <= pt[2] <= 3,
         x_shifted_points)
 
     middle_shifts = filter(
         lambda pt:
-            1 <= pt[2] <= 4,
+            2 <= pt[2] <= 4,
         x_shifted_points)
 
     big_shifts = filter(
@@ -79,20 +79,26 @@ def create_mask_from_points_motion(
         x_shifted_points)
 
     shifts = [
-        little_shifts,
-        middle_shifts,
-        big_shifts,
-        large_shifts]
+        (filter(
+            lambda pt, i=i:
+                i <= pt[2] <= i + 2,
+            x_shifted_points), (i, i + 2))
+        for i in range(1, 5)
+#        (little_shifts, (1, 3)),
+#        (middle_shifts, (2, 4)),
+#        (big_shifts, (3, 5)),
+#        (large_shifts, (4, 9)),
+        ]
 
     masks = []
 
-    for points in shifts:
+    for (points, radiuses) in shifts:
         new_mask = np.zeros_like(mask)
         for pt in points:
-            x, y, radius = pt
+            x, y, radius = pt[:3]
             new_mask = cv2.circle(new_mask,(x,y), int(radius), (255, 0, 0),-1)
 
-        masks.append(new_mask)
+        masks.append((new_mask, radiuses))
 
     return masks, x_shifted_points
 
@@ -109,12 +115,19 @@ def calculate_obstacles_map(
     drawed_contours_list = []
     obstacles_blocks_list = []
 
-    for i, mask in enumerate(masks):
+    for i, (mask, (min_r, max_r)) in enumerate(masks):
         mask = cv2.pyrDown(mask.copy())
 
+        opening = mask[..., 0]
+        opening = cv2.morphologyEx(
+            opening, cv2.MORPH_OPEN,
+            np.ones((max_r * 2, max_r * 2), dtype=np.uint8), iterations=1)
         opening = cv2.morphologyEx(
             mask[..., 0], cv2.MORPH_CLOSE,
-            np.ones((5, 5), dtype=np.uint8), iterations=1+i)
+            np.ones((max_r * 2, max_r * 2), dtype=np.uint8), iterations=min_r)
+        opening = cv2.morphologyEx(
+            opening, cv2.MORPH_OPEN,
+            np.ones((max_r * 2, max_r * 2), dtype=np.uint8), iterations=1)
 
         opening = cv2.inRange(opening, 1, 255)
 
@@ -130,10 +143,13 @@ def calculate_obstacles_map(
 
         for cnt in contours:
             x,y,w,h = cv2.boundingRect(cnt)
-            obstacles_blocks = cv2.rectangle(
-                obstacles_blocks, (x, y), (x + w, y + h),
-                (0, 0, 255), thickness=cv2.FILLED)
-            drawed_contours = cv2.rectangle(
+#            obstacles_blocks = cv2.rectangle(
+#                obstacles_blocks, (x, y), (x + w, y + h),
+#                (0, 0, 255), thickness=cv2.FILLED)
+            obstacles_blocks = cv2.drawContours(
+                obstacles_blocks, contours, -1, (0, 0, 255), cv2.FILLED)
+
+            drawed_contours_with_rectangles = cv2.rectangle(
                 drawed_contours, (x,y),(x+w,y+h),(0,0,255),1)
 
         drawed_contours_list.append(drawed_contours)
