@@ -9,7 +9,7 @@ import numpy as np
 from obstacle_detector.perspective import inv_persp_new, regress_perspecive
 from obstacle_detector.distance_calculator import spline_dist
 
-def video_test(input_video_path=None):
+def video_test(input_video_path=None, output_video_path=None):
     cx = 603
     cy = 297
     roi_width = 25
@@ -26,6 +26,14 @@ def video_test(input_video_path=None):
             else input('enter video path: '))
 
     ret, frame = cap.read()
+
+    out_height, out_width = frame.shape[:2]
+    fourcc = cv2.VideoWriter_fourcc(*'XVID')
+    out = cv2.VideoWriter(
+        output_video_path \
+            if output_video_path is not None \
+            else 'texture_matching.avi',
+        fourcc, 15.0, (out_width, out_height))
 
     while(ret):
         ret, frame = cap.read()
@@ -71,16 +79,14 @@ def video_test(input_video_path=None):
         regressed_texture = regress_perspecive(
             hsv, pts1, frame.shape[:2], 0)
 
-        cv2.imshow(
-            'frame',
-            cv2.addWeighted(
-                regressed_texture, 0.5,
-                frame, 0.5,
-                0))
+        frame = cv2.addWeighted(
+            regressed_texture, 0.5,
+            frame, 0.5,
+            0)
 
-        cv2.imshow(
-            'plane',
-            hsv)
+        cv2.imshow('frame', frame)
+        cv2.imshow('plane', hsv)
+        out.write(frame)
 
         k = cv2.waitKey(1) & 0xff
         if k == 27:
@@ -89,6 +95,7 @@ def video_test(input_video_path=None):
             cv2.imwrite('screen2.png', regressed_image)
 
     cap.release()
+    out.release()
     cv2.destroyAllWindows()
 
-video_test('../../video/6.mp4')
+video_test('../../video/6.mp4', '../results/texture_matching.avi')
