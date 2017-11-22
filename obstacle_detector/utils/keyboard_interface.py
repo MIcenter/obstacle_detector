@@ -9,4 +9,6 @@ def handle_keyboard(screenshot_image=None):
     elif k == ord('s'):
         if screenshot_image is not None:
             cv2.imwrite('screen.png', img)
+    elif k == ord('n'):
+        return ord('n')
     return 0
